@@ -1,13 +1,6 @@
-/*
-TODO : Changer Mask en double tableau de bool.
-TODO : Faire le flow mask (sans gérer la position. Puis avec.)
-
-
-*/
-
 use std::int;
 use std::vec;
-use tree::{Tree, Visitor, wrap_visitor};
+use extra::bitv;
 
 trait Game {
     fn from_win(&self) -> uint;
@@ -112,11 +105,12 @@ impl Mask {
         }
         result
     }
+    
 }
 
 struct Board { data: ~[~[Tile]] }
 
-struct Position {
+pub struct Position {
     board: Board,
     player: (uint, uint)
 }
@@ -126,6 +120,7 @@ impl Game for Position {
     fn from_win(&self) -> uint {
         Mask::new(self.board.data, |til| {*til == Target}).occurences()
     }
+    
     fn size(&self) -> (uint, uint) {
         let b = &(self.board.data);
         match (b.len()) {
@@ -134,12 +129,15 @@ impl Game for Position {
         }
         
     }
+    
     fn get_tile(&self, x: uint, y: uint) -> Tile {
         self.board.data[x][y]
     }
+    
     fn get_box_number(&self) -> uint {
         Mask::new(self.board.data, |til| {til.is_box()}).occurences()
     }
+    
     fn get_box_position(&self, box: uint) -> Option<(uint, uint)> {
         let mut x = None;
         for self.board.data.eachi |i, col| {
@@ -152,30 +150,22 @@ impl Game for Position {
     }
     
     fn get_box_mask(&self, box: uint) -> Option<Mask> {
-        let mut mask = Mask::new(self.board.data, |til| { *til == Box(box) };
-        if (mask.occurences() == 0) { return None;}
-        
+        // let mut mask = Mask::new(self.board.data, |til| { *til == Box(box) };
+        // if (mask.occurences() == 0) { return None;}
+        None
     }
+    
     fn get_player_position(&self) -> (uint, uint) {
         self.player
     }
+    
     fn get_position_mask(&self) -> ~Mask {
         Mask::new(self.board.data, |_| { false })
     }
-    
 }
 
-fn resolve_game(game: &mut Position) {
-    
-    let mut tree = Tree{data: game, parent: None, childs: ~[]};
-    let visitor = ~Visitor{f: |tree| {
-        // 1. Check if win or nearer from victory. (box on target)
-                
-        // 2. Calculate the masks.
-        // 3. Check if this position is contained into one of the above.
-        // 4. Creates as many new positions as there are possibilities.
-    }};
-    let wrap = wrap_visitor(visitor);
-    tree.accept_consume(&mut wrap);
+#[test]
+fn test() {
+    assert!(Box(1) == Box(1));
 }
-// */
+

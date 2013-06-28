@@ -1,2 +1,23 @@
-mod game;
+extern mod extra;
+use board::{Position};
+use tree::{Tree, Visitor, wrap_visitor};
+
+
+mod board;
 mod tree;
+
+/*
+fn resolve_game(game: &mut Position) {
+    
+    let mut tree = Tree{data: game, parent: None, childs: ~[]};
+    let visitor = ~Visitor{f: |tree| {
+        // 1. Check if win or nearer from victory. (box on target)
+                
+        // 2. Calculate the masks.
+        // 3. Check if this position is contained into one of the above.
+        // 4. Creates as many new positions as there are possibilities.
+    }};
+    let wrap = wrap_visitor(visitor);
+    tree.accept_consume(&mut wrap);
+}
+*/
