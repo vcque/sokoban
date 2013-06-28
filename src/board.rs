@@ -13,25 +13,13 @@ trait Game {
     fn get_position_mask(&self) -> ~Mask;
 }
 
+#[deriving(Eq)]
 enum Tile {
     Floor,
     Wall,
     Box(uint),
     Target,
     BoxOnTarget
-}
-
-impl Eq for Tile {
-
-    fn eq(&self, other: &Tile) -> bool {
-        match *self {
-        Box(n) => {*other == Box(n)},
-        a => {*other == a}
-        }
-    }
-    
-    fn ne(&self, other: &Tile) -> bool { !self.eq(other) }
-    
 }
 
 impl Tile {
@@ -165,7 +153,10 @@ impl Game for Position {
 }
 
 #[test]
-fn test() {
+fn test_tile() {
     assert!(Box(1) == Box(1));
+    assert!(Box(1) != Box(2));
+    assert!(Box(1) != Wall);
+    assert!(Box(0).is_box());
 }
 
