@@ -1,24 +1,41 @@
 use std::int;
 use std::vec;
-use extra::bitv;
 
+/// The interface a sokoban game implements.
 trait Game {
+
+    /// Game is won when it returns 0. (no target left)
     fn from_win(&self) -> uint;
+    /// The size of the game.
     fn size(&self) -> (uint, uint);
+    /// Get the tile at position (x,y).
     fn get_tile(&self, x: uint, y: uint) -> Tile;
+    /// Get the number of boxes on game.
     fn get_box_number(&self) -> uint;
+    /// Get the position of box number i.
     fn get_box_position(&self, box: uint) -> Option<(uint,uint)>;
-    fn get_box_mask(&self, box: uint) -> Option<Mask>;
+    /// Get all possible next positions for box number i.
+    fn get_box_mask(&self, box: uint) -> Option<~Mask>;
+    /// Get the player position.
     fn get_player_position(&self) -> (uint, uint);
+    /// Get all possible next positions of the player.
     fn get_position_mask(&self) -> ~Mask;
 }
 
+/// Represents each block of a given board.
 #[deriving(Eq)]
 enum Tile {
+    /// Basic passable block.
     Floor,
+    /// Putting a box here means loosing, it is passable.
+    DeadSpot,
+    /// Basic un-passable block.
     Wall,
+    /// A box with its id.
     Box(uint),
+    /// You need to put a box on it for winning, it is passable.
     Target,
+    /// A target with a box on it.
     BoxOnTarget
 }
 
@@ -27,6 +44,7 @@ impl Tile {
     fn is_passable(&self) -> bool {
         match *self {
         Floor => { true },
+        DeadSpot => { true }
         Target => { true },
         _ => { false }
         }
@@ -103,6 +121,11 @@ pub struct Position {
     player: (uint, uint)
 }
 
+impl Position {
+    priv fn flow_mask(&self, mask: &mut Mask, (i,j): (int, int)) {
+        
+    }
+}
 impl Game for Position {
 
     fn from_win(&self) -> uint {
@@ -137,11 +160,12 @@ impl Game for Position {
         return x;
     }
     
-    fn get_box_mask(&self, box: uint) -> Option<Mask> {
-        // let mut mask = Mask::new(self.board.data, |til| { *til == Box(box) };
-        // if (mask.occurences() == 0) { return None;}
+    fn get_box_mask(&self, box: uint) -> Option<~Mask> {
+        let mut mask = Mask::new(self.board.data, |til| { *til == Box(box) });
+        if (mask.occurences() == 0) { return None; }
         None
     }
+    
     
     fn get_player_position(&self) -> (uint, uint) {
         self.player
