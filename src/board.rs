@@ -60,6 +60,20 @@ impl Tile {
     }
 }
 
+impl ToStr for Tile {
+
+    fn to_str(&self) -> ~str {
+        match *self {
+        Floor => {~" "},
+        DeadSpot => {~" "},
+        Wall => {~"0"},
+        Box(_) => {~"B"},
+        Target => {~"X"},
+        BoxOnTarget => {~"T"}
+        }
+    }
+}
+
 /*
 The mask data structure.
 */
@@ -138,7 +152,8 @@ pub struct Position {
 }
 
 impl Position {
-    priv fn flow_mask(&self, mask: &mut Mask, (i,j): (uint, uint)) {
+
+    priv fn box_flow_mask(&self, mask: &mut Mask, (i,j): (uint, uint)) {
         // x axis.
         let xl = self.get_tile(i-1, j);
         let xr = self.get_tile(i+1, j);
@@ -147,11 +162,11 @@ impl Position {
         if ((xl.is_passable() || xlm) && (xr.is_passable() || xrm)) {
             if (!xlm) {
                 mask.data[i-1][j] = true;
-                self.flow_mask(mask, (i-1, j));
+                self.box_flow_mask(mask, (i-1, j));
             }
             if (!xrm) {
                 mask.data[i+1][j] = true;
-                self.flow_mask(mask, (i+1, j));
+                self.box_flow_mask(mask, (i+1, j));
             }
         }
 
@@ -163,14 +178,46 @@ impl Position {
         if ((yl.is_passable() || ylm) && (yr.is_passable() || yrm)) {
             if (!ylm) {
                 mask.data[i][j-1] = true;
-                self.flow_mask(mask, (i, j-1));
+                self.box_flow_mask(mask, (i, j-1));
             }
             if (!yrm) {
                 mask.data[i][j+1] = true;
-                self.flow_mask(mask, (i, j+1));
+                self.box_flow_mask(mask, (i, j+1));
             }
         }
     }
+    
+
+    priv fn flow_mask(&self, mask: &mut Mask, (i,j): (uint, uint)) {
+        // x axis.
+        let xl = self.get_tile(i-1, j);
+        let xr = self.get_tile(i+1, j);
+        let xlm = mask.data[i-1][j];
+        let xrm = mask.data[i+1][j];
+        if (xl.is_passable() && !xlm) {
+            mask.data[i-1][j] = true;
+            self.flow_mask(mask, (i-1, j));
+        }
+        if (xr.is_passable() && !xrm) {
+            mask.data[i+1][j] = true;
+            self.box_flow_mask(mask, (i+1, j));
+        }
+
+        // y axis.        
+        let yl = self.get_tile(i, j-1);
+        let yr = self.get_tile(i, j+1);
+        let ylm = mask.data[i][j-1];
+        let yrm = mask.data[i][j+1];
+        if (yl.is_passable() && !ylm) {
+            mask.data[i][j-1] = true;
+            self.flow_mask(mask, (i, j-1));
+        }
+        if (yr.is_passable() && !yrm) {
+            mask.data[i][j+1] = true;
+            self.flow_mask(mask, (i, j+1));
+        }
+    }
+    
 }
 
 impl Game for Position {
@@ -208,7 +255,6 @@ impl Game for Position {
                 if (*cell == Box(box)) { x = Some((i,j)) }
             }
         }
-        
         return x;
     }
     
@@ -217,7 +263,7 @@ impl Game for Position {
         if (mask.occurences() == 0) { return None; }
         else {
             let pos = self.get_box_position(box);
-            self.flow_mask(mask, pos.get());
+            self.box_flow_mask(mask, pos.get());
             Some(mask)
         }
     }
@@ -228,7 +274,11 @@ impl Game for Position {
     }
     
     fn get_position_mask(&self) -> ~Mask {
-        Mask::new(self.board.data, |_| { false })
+        let mut result = Mask::new(self.board.data, |_| { false });
+        let (x,y) = self.player;
+        result.data[x][y] = true;
+        self.flow_mask(result, self.player);
+        result
     }
 }
 
@@ -260,7 +310,8 @@ fn test_flow_mask() {
     }
 
     let b = Board{data: tiles};
-    let pos = Position{board: b, player: (0,0)};
+    let pos = Position{board: b, player: (4,4)};
+    
     let flowMask = pos.get_box_mask(0);
     let mask = Mask::new(pos.board.data, |til| {
         *til != Wall
