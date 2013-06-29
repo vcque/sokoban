@@ -1,11 +1,15 @@
 /// Simple multi-children tree.
 pub struct Tree<N> {
     data: N,
-    parent: Option<Tree<N>>,
     childs: ~[Tree<N>]
 }
 
 impl <N> Tree<N> {
+
+    pub fn new(dat: N) -> Tree<N> {
+        Tree{data: dat, childs: ~[]}
+    }
+    
     pub fn accept(&mut self, visitor: &mut VisitorWrap<N>) {
         visitor.visit(self);
         for self.childs.each_mut |tree| {
