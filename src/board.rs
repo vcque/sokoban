@@ -3,7 +3,7 @@ use std::vec;
 use std::str::push_str;
 
 /// The interface a sokoban game implements.
-trait Game {
+pub trait Game {
 
     /// Game is won when it returns 0. (no target left)
     fn from_win(&self) -> uint;
@@ -24,7 +24,7 @@ trait Game {
 }
 
 /// Represents each block of a given board.
-#[deriving(Eq)]
+#[deriving(Eq, Clone)]
 enum Tile {
     /// Basic passable block.
     Floor,
@@ -32,7 +32,7 @@ enum Tile {
     DeadSpot,
     /// Basic un-passable block.
     Wall,
-    /// A box with its id.
+    /// A box with its id for keeping track of it.
     Box(uint),
     /// You need to put a box on it for winning, it is passable.
     Target,
@@ -85,9 +85,9 @@ impl Mask {
     fn new(board: &[~[Tile]], f: &fn(&Tile) -> bool) -> ~Mask {
         let mut result = vec::with_capacity(board.len());
     
-        for board.each |col| {
+        for board.iter().advance |col| {
             let mut column = vec::with_capacity(board.len());
-            for col.each |til| {
+            for col.iter().advance |til| {
                 column.push(f(til));   
             }
             result.push(column);
@@ -111,6 +111,19 @@ impl Mask {
         result
     }
     
+    fn diff(&self, other: &Mask) -> ~Mask {
+        if (self.size() != other.size()) { fail!("Mask not of the same size !!") }
+        let (x,y) = self.size();
+        let mut result = ~*self.clone();
+        for int::range(0, x.to_int()-1) |i| {
+            for int::range(0, y.to_int()-1) |j| {
+                result.data[i][j] = self.data[i][j] && !other.data[i][j];
+            }
+        }
+        
+        return result;
+    }
+    
     fn size(&self) -> (uint, uint) { 
         match self.data.len() {
         0 => { (0, 0) },
@@ -120,21 +133,35 @@ impl Mask {
 
     fn occurences(&self) -> uint {
         let mut result = 0;
-        for self.data.each |col| {
-            for col.each |exists| {
+        for self.data.iter().advance |col| {
+            for col.iter().advance |exists| {
                 if (*exists) { result += 1 }
             }
         }
         result
     }
     
+    fn as_positions(&self) -> ~[(uint,uint)] {
+        let mut result = ~[];
+        let mut x = 0;
+        for self.data.iter().advance |col| {
+            let mut y = 0;
+            for col.iter().advance |exists| {
+                if (*exists) { result.push((x,y)); }
+                y = y+1;
+            }
+            x = x+1;
+        }
+        
+        result
+    }
 }
 
 impl ToStr for Mask {
     fn to_str(&self) -> ~str {
         let mut result = ~"";
-        for self.data.each |col| {
-            for col.each |b| {
+        for self.data.iter().advance |col| {
+            for col.iter().advance |b| {
                 if *b {push_str(&mut result, "1");}
                 else {push_str(&mut result, "0");}
             }
@@ -144,8 +171,10 @@ impl ToStr for Mask {
     }
 }
 
+#[deriving(Eq, Clone)]
 struct Board { data: ~[~[Tile]] }
 
+#[deriving(Eq, Clone)]
 pub struct Position {
     board: Board,
     player: (uint, uint)
@@ -153,7 +182,9 @@ pub struct Position {
 
 impl Position {
 
+    // TODO : taking the position mask into account.
     priv fn box_flow_mask(&self, mask: &mut Mask, (i,j): (uint, uint)) {
+        
         // x axis.
         let xl = self.get_tile(i-1, j);
         let xr = self.get_tile(i+1, j);
@@ -249,13 +280,17 @@ impl Game for Position {
     }
     
     fn get_box_position(&self, box: uint) -> Option<(uint, uint)> {
-        let mut x = None;
-        for self.board.data.eachi |i, col| {
-            for col.eachi |j, cell| {
-                if (*cell == Box(box)) { x = Some((i,j)) }
+        let mut result = None;
+        let mut i = 0;
+        for self.board.data.iter().advance |col| {
+        let mut j = 0;
+            for col.iter().advance |cell| {
+                if (*cell == Box(box)) { result = Some((i,j)); }
+                j = j + 1;
             }
+        i = i + 1;
         }
-        return x;
+        return result;
     }
     
     fn get_box_mask(&self, box: uint) -> Option<~Mask> {
