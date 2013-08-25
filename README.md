@@ -2,7 +2,7 @@ sokoban
 =======
 
 A simple sokoban solver written in Rust 0.7. Its main goal is to find a non-optimal solution with average speed (< 1min).
-I am doing it mainly to learn both problem solving and how to code in Rust by myself.
+I did it mainly to learn both problem solving and how to code in Rust by myself.
 So if you are knowledgeable in one of these fields, I'm open to any suggestion to improve this code.
 
 ## How to use it
@@ -42,7 +42,7 @@ There, you know which boxes can be pushed left.
 ## What does not work
 
 * The solver will output all pushes except the last one... Hopefully, I think anyone would find this one.
-* The output shows box on a target as as box and player on a target as a player.
+* The output shows a box on target as a normal box and a player on target as a normal player.
 * The solver accepts files that have 0 or more than 1 player on it.
 
 ## What can be made better
