@@ -4,6 +4,29 @@ use bitv::Bitv;
 use board::Board;
 use board::{Move, UP, LEFT, RIGHT, DOWN};
 
+fn build_possibles(board: &Board, boxes: &Bitv, pos: uint) -> Bitv {
+    let (x, y) = board.size;
+    
+    let mut old = Bitv::new(x * y);
+    let mut result = Bitv::new(x * y);
+    result.set(pos, true);
+    let noBox = !boxes;
+    
+    while (old != result) {
+        old = result;
+        
+        let up = old >> x;
+        let down = old << x;
+        let left = old >> 1;
+        let right = old << 1;
+        
+        result = old | left | right | up | down;
+        result = result & board.floor & noBox;
+    }
+    
+    return result;
+}
+
 pub struct Position {
     // Data that don't change from one position to another.
     board: @Board,
@@ -22,6 +45,34 @@ impl Eq for Position {
 
     fn ne(&self, other: &Position) -> bool {
         !self.eq(other)
+    }
+}
+
+impl ToStr for Position {
+
+    fn to_str(&self) -> ~str {
+        let (x, y) = self.board.size;
+        let mut result = ~"";
+        
+        for uint::range(0, y) |j| {
+            for uint::range(0, x) |i| {
+                let n = self.board.to_linear_coord((i, j));
+                if n == self.playerPosition {
+                    result = result.append("@");
+                } else if !self.board.floor[n] {
+                    result = result.append("#");
+                } else if self.boxes[n] {
+                    result = result.append("$");
+                } else if self.board.target[n] {
+                    result = result.append(".");
+                } else {
+                    result = result.append(" ");
+                }
+            }
+            result = result.append("\n");
+        }
+        
+        return result;
     }
 }
 
@@ -73,106 +124,37 @@ impl Position {
         let mut result = ~[];
         let (x,_) = self.board.size;
 
-        let up = self.boxes >> x;
-        let down = self.boxes << x;
-        let left = self.boxes >> 1;
-        let right = self.boxes << 1;
-        
         let room = self.board.places & !self.boxes;
+        let upRoom = room >> x;
+        let downRoom = room << x;
+        let leftRoom = room >> 1;
+        let rightRoom = room << 1;
         
-        { // Up case
-            let box = up & room;
-            let player = down & self.player;
-            let mov = box & player >> 2*x;
-            for uint::range(0, mov.length) |i| {
-                if (mov[i]) {
-                    result.push(Move{position: i + x, mov: UP}); 
-                }
+        let upPlayer = self.player >> x;
+        let downPlayer = self.player << x;
+        let leftPlayer = self.player >> 1;
+        let rightPlayer = self.player << 1;
+        
+        let up = self.boxes & upPlayer & downRoom;
+        let down = self.boxes & downPlayer & upRoom;
+        let left = self.boxes & leftPlayer & rightRoom;
+        let right = self.boxes & rightPlayer & leftRoom;
+        
+        for uint::range(0, up.length) |i| {
+            if (up[i]) {
+                result.push(Move{position: i, mov: UP}); 
             }
-        }
-        { // Down case
-            let box = down & room;
-            let player = up & self.player;
-            let mov = box & player << 2*x;
-            for uint::range(0, mov.length) |i| {
-                if (mov[i]) {
-                    result.push(Move{position: i - x, mov: DOWN}); 
-                }
+            if (down[i]) {
+                result.push(Move{position: i, mov: DOWN}); 
             }
-        }
-        { // Left case
-            let box = left & room;
-            let player = right & self.player;
-            let mov = box & player >> 2;
-            for uint::range(0, mov.length) |i| {
-                if (mov[i]) {
-                    result.push(Move{position: i + 1, mov: LEFT}); 
-                }
+            if (left[i]) {
+                result.push(Move{position: i, mov: LEFT}); 
             }
-        }
-        { // Right case
-            let box = right & room;
-            let player = left & self.player;
-            let mov = box & player << 2;
-            for uint::range(0, mov.length) |i| {
-                if (mov[i]) {
-                    result.push(Move{position: i - 1, mov: RIGHT}); 
-                }
+            if (right[i]) {
+                result.push(Move{position: i, mov: RIGHT}); 
             }
         }
 
         return result;
     }
 }
-
-impl ToStr for Position {
-
-    fn to_str(&self) -> ~str {
-        let (x, y) = self.board.size;
-        let mut result = ~"";
-        
-        for uint::range(0, y) |j| {
-            for uint::range(0, x) |i| {
-                let n = self.board.to_linear_coord((i, j));
-                if n == self.playerPosition {
-                    result = result.append("@");
-                } else if !self.board.floor[n] {
-                    result = result.append("#");
-                } else if self.boxes[n] {
-                    result = result.append("$");
-                } else if self.board.target[n] {
-                    result = result.append(".");
-                } else {
-                    result = result.append(" ");
-                }
-            }
-            result = result.append("\n");
-        }
-        
-        return result;
-    }
-}
-
-fn build_possibles(board: &Board, boxes: &Bitv, pos: uint) -> Bitv {
-    let (x, y) = board.size;
-    
-    let mut old = Bitv::new(x * y);
-    let mut result = Bitv::new(x * y);
-    result.set(pos, true);
-    let noBox = !boxes;
-    
-    while (old != result) {
-        old = result;
-        
-        let up = old >> x;
-        let down = old << x;
-        let left = old >> 1;
-        let right = old << 1;
-        
-        result = old | left | right | up | down;
-        result = result & board.floor & noBox;
-    }
-    
-    return result;
-}
-

@@ -62,6 +62,7 @@ impl Visitor<Position> for SokobanVisitor {
             if new.is_win() {
                 self.found = true;
                 print_moves(tree);
+                println(self.positions.len().to_str() + " positions were computed.");
             }
             let hash = (new.boxes.clone(), new.player.clone());
             if (!self.positions.contains(&hash)) {
