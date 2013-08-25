@@ -1,4 +1,5 @@
 use std::ops::{BitAnd, BitOr, Index, Not, Shl, Shr};
+use std::to_bytes::{Cb, IterBytes};
 use std::uint;
 use std::vec;
 
@@ -110,6 +111,12 @@ impl Bitv {
         let mask = !0 >> (s - self.length % s);
         let index = self.store.len() - 1;
         self.store[index] = self.store[index] & mask;
+    }
+}
+
+impl IterBytes for Bitv {
+    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+        self.store.iter_bytes(lsb0, f)
     }
 }
 

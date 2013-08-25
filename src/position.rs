@@ -7,13 +7,12 @@ use board::{Move, UP, LEFT, RIGHT, DOWN};
 pub struct Position {
     // Data that don't change from one position to another.
     board: @Board,
-        
     /// The boxes' positions
     boxes: Bitv,
-    /// The player's position in linear coordinate (used mainly for the ToStr impl)
-    playerPosition: uint,
     /// The player's possible movements
-    player: Bitv
+    player: Bitv,
+    /// The player's position in linear coordinate (used mainly for the ToStr impl)
+    playerPosition: uint
 }
 
 impl Eq for Position {

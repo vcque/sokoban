@@ -1,9 +1,12 @@
 extern mod extra (vers = "0.7");
 
+use std::container::Set;
+use std::hashmap::{HashSet};
 use std::io;
 use std::os;
 
 use board::Board;
+use bitv::Bitv;
 use position::Position;
 use tree::{Tree, Visitor};
 
@@ -40,16 +43,18 @@ fn parse(reader: @Reader) {
     let p = Position::new(b);
 
     let mut t = Tree::new(p);
-    let sv = ~SokobanVisitor{found: false} as ~Visitor<Position>;
-    t.accept_consume(&mut tree::wrap_visitor(sv));    
+    let sv = ~SokobanVisitor{positions: HashSet::new(), found: false} as ~Visitor<Position>;
+    t.accept(&mut tree::wrap_visitor(sv));    
 }
 
 struct SokobanVisitor {
+    positions: HashSet<(Bitv, Bitv)>,
     found: bool
 }
 
 impl Visitor<Position> for SokobanVisitor {
     fn visit(&mut self, tree: &mut Tree<Position>) {
+    
         if (self.found) {return;}
         let mov = &tree.data.moves();
         for mov.iter().advance |m| {
@@ -58,13 +63,14 @@ impl Visitor<Position> for SokobanVisitor {
                 self.found = true;
                 print_moves(tree);
             }
-            if !has_equal_parent(&new, tree) {
+            let hash = (new.boxes.clone(), new.player.clone());
+            if (!self.positions.contains(&hash)) {
+                self.positions.insert(hash);
                 let t = Tree::new(new);
                 tree.add(t);
             }
         }
     }
-    
 }
 
 fn has_equal_parent(p: &Position, tree: &Tree<Position>) -> bool {
@@ -107,7 +113,7 @@ fn test() {
     let g = Position::new(b);
 
     let mut t = Tree::new(g);
-    let sv = ~SokobanVisitor{found: false} as ~Visitor<Position>;
+    let sv = ~SokobanVisitor{positions: HashSet::new(), found: false} as ~Visitor<Position>;
     t.accept_consume(&mut tree::wrap_visitor(sv));    
 }
 
