@@ -138,13 +138,11 @@ impl ToStr for Position {
                 if n == self.playerPosition {
                     result = result.append("@");
                 } else if !self.board.floor[n] {
-                    result = result.append("0");
+                    result = result.append("#");
                 } else if self.boxes[n] {
-                    result = result.append("X");
+                    result = result.append("$");
                 } else if self.board.target[n] {
-                    result = result.append("T");
-                } else if !self.board.places[n] {
-                    result = result.append("-");
+                    result = result.append(".");
                 } else {
                     result = result.append(" ");
                 }

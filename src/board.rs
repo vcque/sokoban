@@ -20,7 +20,7 @@ pub struct Board {
 
 impl Board {
 
-    pub fn new(size: (uint, uint), data: ~str) -> Board {
+    pub fn new(size: (uint, uint), data: ~[~str]) -> Board {
         let (x, y) = size;
         let mut result = Board {
             size: size,
@@ -34,48 +34,63 @@ impl Board {
         let mut nbrBox = 0;
         let mut nbrTarget = 0;
         
-        let mut i = 0;
-        for data.iter().advance() |ch| {
-            match (ch) {
-            ' ' => { // Floor
-                result.floor.set(i, true); 
-            },
-            '0' => {}, // Wall
-            'X' => { // Box 
-                result.initial.set(i, true);
-                result.floor.set(i, true);
-                nbrBox += 1; 
-            }, 
-            'T' => { // Target
-                result.target.set(i, true); 
-                result.floor.set(i, true);
-                nbrTarget += 1;            
-            },
-            '@' => { // Player
-                result.floor.set(i, true);
-                result.player = i;
+        for uint::range(0, y) |j| {
+            let toParse = &data[j];
+            let mut i = 0;
+            for toParse.iter().advance() |ch| {
+                let n = i + j * x;
+                match (ch) {
+                    ' ' => { // Floor
+                        result.floor.set(n, true);
+                    },
+                    '#' => {}, // Wall
+                    '$' => { // Box
+                        result.initial.set(n, true);
+                        result.floor.set(n, true);
+                        nbrBox += 1;
+                    },
+                    '.' => { // Target
+                        result.target.set(n, true);
+                        result.floor.set(n, true);
+                        nbrTarget += 1;
+                    },
+                    '@' => { // Player
+                        result.floor.set(n, true);
+                        result.player = n;
+                    },
+                    '*' => { // Box on target
+                        result.floor.set(n, true);
+                        result.initial.set(n, true);
+                        result.target.set(n, true);
+                        nbrTarget += 1;
+                        nbrBox += 1;
+                    },
+                    '+' => { // Player on target
+                        result.floor.set(n, true);
+                        result.target.set(n, true);
+                        result.player = n;
+                        nbrTarget += 1;
+                    },
+                    c => {
+                        fail!("Wrong character : " + str::from_char(c));
+                    }
+                }
+                i += 1;
             }
-            c => { 
-                fail!("Wrong character : " + str::from_char(c));
-            }
-            }
-            i += 1;
         }
             
         assert!(nbrBox >= nbrTarget, "Impossible game, there's more targets than boxes !");
             
         // TODO refine deadspot places.
         let mut places = Bitv::new(x * y);
-        {                
-            let up = result.floor >> x;
-            let down = result.floor << x;
-            let left = result.floor >> 1;
-            let right = result.floor << 1;
-            
-            places = (up | left) & (left | down) & (down | right) & (right | up);
-            places = places | result.target;
-            places = places & result.floor;
-        }
+        let up = result.floor >> x;
+        let down = result.floor << x;
+        let left = result.floor >> 1;
+        let right = result.floor << 1;
+
+        places = (up | left) & (left | down) & (down | right) & (right | up);
+        places = places | result.target;
+        places = places & result.floor;
         
         result.places = places;
         return result;
