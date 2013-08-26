@@ -38,22 +38,6 @@ impl <N> Tree<N> {
             self.parent = Some(transmute(parent));
         } 
     }
-
-    pub fn accept(&mut self, visitor: &mut VisitorWrap<N>) {
-        visitor.visit(self);
-        for self.childs.mut_iter().advance |tree| {
-            tree.accept(visitor);
-        }
-    }
-    
-    pub fn accept_consume(&mut self, visitor: &mut VisitorWrap<N>) {
-        visitor.visit(self);
-        for self.childs.mut_iter().advance |tree| {
-            tree.accept_consume(visitor);
-        }
-        self.childs.clear();
-    }
-    
 }
 
 impl <N:ToStr> ToStr for Tree<N> {

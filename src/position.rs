@@ -6,22 +6,34 @@ use board::{Move, UP, LEFT, RIGHT, DOWN};
 
 fn build_possibles(board: &Board, boxes: &Bitv, pos: uint) -> Bitv {
     let (x, y) = board.size;
-    
-    let mut old = Bitv::new(x * y);
-    let mut result = Bitv::new(x * y);
-    result.set(pos, true);
+    let n = x * y;
+
     let noBox = !boxes;
+    let mut old = Bitv::new(n);
+    let mut result = Bitv::new(n);
+    let buf = &mut Bitv::new(n);
     
+    result.set(pos, true);
+
     while (old != result) {
-        old = result;
+        old.assign(&result);
+        buf.assign(&old);
+        result.assign_union(buf);
+                
+        buf.assign_shift(1);
+        result.assign_union(buf);
         
-        let up = old >> x;
-        let down = old << x;
-        let left = old >> 1;
-        let right = old << 1;
-        
-        result = old | left | right | up | down;
-        result = result & board.floor & noBox;
+        buf.assign_shift_back(2);
+        result.assign_union(buf);
+
+        buf.assign_shift_back(x-1);
+        result.assign_union(buf);
+
+        buf.assign_shift(2*x);
+        result.assign_union(buf);
+
+        result.assign_intersect(&board.floor);
+        result.assign_intersect(&noBox);
     }
     
     return result;
@@ -91,7 +103,7 @@ impl Position {
     }
 
     /// Constructor from another game.
-    pub fn from_game(game: &Position, mov: Move) -> Position {
+    pub fn from_move(game: &Position, mov: Move) -> Position {
         let mut boxes = game.boxes.clone();
         let (x, _) = game.board.size;
         let n = mov.position;

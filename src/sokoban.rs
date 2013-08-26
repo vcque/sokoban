@@ -39,12 +39,12 @@ fn parse(reader: @Reader) {
         true
     };
 
-    let b = @Board::new((x, y), data);
-    let p = Position::new(b);
+    let board = @Board::new((x, y), data);
+    let position = Position::new(board);
 
-    let mut t = Tree::new(p);
-    let sv = ~SokobanVisitor{positions: HashSet::new(), found: false} as ~Visitor<Position>;
-    t.accept(&mut tree::wrap_visitor(sv));    
+    let mut tree = Tree::new(position);
+    let mut visitor = ~SokobanVisitor{positions: HashSet::new(), found: false};
+    visitor.visit(&mut tree);    
 }
 
 struct SokobanVisitor {
@@ -58,11 +58,10 @@ impl Visitor<Position> for SokobanVisitor {
         if (self.found) {return;}
         let mov = &tree.data.moves();
         for mov.iter().advance |m| {
-            let new = Position::from_game(&tree.data, m.clone());
+            let new = Position::from_move(&tree.data, m.clone());
             if new.is_win() {
                 self.found = true;
                 print_moves(tree);
-                println(self.positions.len().to_str() + " positions were computed.");
             }
             let hash = (new.boxes.clone(), new.player.clone());
             if (!self.positions.contains(&hash)) {
@@ -71,6 +70,10 @@ impl Visitor<Position> for SokobanVisitor {
                 tree.add(t);
             }
         }
+        for tree.childs.mut_iter().advance() |child| {
+            self.visit(child);
+        }
+        tree.childs.clear();
     }
 }
 
@@ -100,6 +103,7 @@ fn depth(tree: &Tree<Position>) -> uint {
     }
 }
 
+#[bench]
 #[test]
 fn test() {
     let mut data = ~[];
@@ -110,11 +114,12 @@ fn test() {
     data.push(~"# . .#@ #");
     data.push(~"#########");
     
-    let b = @Board::new((9, 6), data);
-    let g = Position::new(b);
+    let board = @Board::new((9, 6), data);
+    let position = Position::new(board);
 
-    let mut t = Tree::new(g);
-    let sv = ~SokobanVisitor{positions: HashSet::new(), found: false} as ~Visitor<Position>;
-    t.accept_consume(&mut tree::wrap_visitor(sv));    
+    let mut tree = Tree::new(position);
+    let mut visitor = ~SokobanVisitor{positions: HashSet::new(), found: false};
+    visitor.visit(&mut tree);
+    println(visitor.positions.len().to_str() + " positions were computed.");
 }
 

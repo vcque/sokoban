@@ -81,8 +81,8 @@ impl Board {
             
         assert!(nbrBox >= nbrTarget, "Impossible game, there's more targets than boxes !");
             
+        let mut places;
         // TODO refine deadspot places.
-        let mut places = Bitv::new(x * y);
         let up = result.floor >> x;
         let down = result.floor << x;
         let left = result.floor >> 1;

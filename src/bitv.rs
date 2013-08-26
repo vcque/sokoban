@@ -105,6 +105,69 @@ impl Bitv {
         return result;
     }
     
+    pub fn assign(&mut self, other: &Bitv) {
+        assert_eq!(self.length, other.length);
+        self.store = other.store.clone();
+    }
+    
+    pub fn assign_invert(&mut self, other: &Bitv) {
+        assert_eq!(self.length, other.length);
+        for uint::range(0, self.store.len()) |i| {
+            self.store[i] = !other.store[i];
+        }
+        self.mask();
+    }
+    
+    pub fn assign_union(&mut self, other: &Bitv) {
+        assert_eq!(self.length, other.length);
+        for uint::range(0, self.store.len()) |i| {
+            self.store[i] = self.store[i] | other.store[i];
+        }
+        self.mask();
+    }
+    
+    pub fn assign_intersect(&mut self, other: &Bitv) {
+        assert_eq!(self.length, other.length);
+        for uint::range(0, self.store.len()) |i| {
+            self.store[i] = self.store[i] & other.store[i];
+        }
+        self.mask();
+    }
+    
+    pub fn assign_shift(&mut self, shift: uint) {
+        let index = shift / uint::bits;
+        let bits = shift % uint::bits;
+        let length = self.store.len();
+        for uint::range_rev(length, 0) |i| {
+            let first = 
+                if (i >= index + 1) { self.store[i-1-index] }
+                else {0};
+            let second = 
+                if (i >= index + 2) { self.store[i-2-index] }
+                else {0};
+            
+            self.store[i-1] = first << bits | second >> uint::bits - bits;
+        }
+        self.mask();
+    }
+    
+    pub fn assign_shift_back(&mut self, shift: uint) {
+        let index = shift / uint::bits;
+        let bits = shift % uint::bits;
+        let length = self.store.len();
+        for uint::range(0, length) |i| {
+            let first = 
+                if (i + index < length) { self.store[i + index] }
+                else {0};
+            let second = 
+                if (i + index + 1 < length) { self.store[i + 1 + index] }
+                else {0};
+            
+            self.store[i] = first >> bits | second << uint::bits - bits;
+        }
+        self.mask();
+    }
+    
     /// Used for keeping bitv consistent with eq
     fn mask(&mut self) {
         let s = uint::bits;
@@ -184,13 +247,19 @@ fn test_invert() {
 
 #[test]
 fn test_shift() {
-    let mut a = Bitv::new(63);
-    let mut b = Bitv::new(63);
-
-        a.set(31, true);
-        b.set(32, true);
+    let mut a = Bitv::new(1000);
+    let mut b = Bitv::new(1000);
+    let mut c = Bitv::new(1000);
     
-    assert_eq!(&a.shift(1), &b);
-    assert_eq!(&a, &b.shift_back(1));
-    assert_eq!(&a, &a.shift(6).shift_back(6));
+    a.set(128, true);
+    b.set(257, true);
+    c.set(130, true);
+    
+    assert_eq!(&a.shift(129), &b);
+    assert_eq!(&a, &b.shift_back(129));
+    assert_eq!(&a, &a.shift(129).shift_back(129));
+    &a.assign_shift(129);
+    assert_eq!(&a, &b);
+    &b.assign_shift_back(127);
+    assert_eq!(&c, &b);
 }
