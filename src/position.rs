@@ -118,13 +118,24 @@ impl Position {
             }
             , true);
         
-        let pp = build_possibles(game.board, &boxes, mov.position);
-        return Position {
+        let mut pp =
+            if ( game.player & boxes == Bitv::new(boxes.length) ) {
+                game.player.clone()            
+            } else {
+                Bitv::new(game.player.length)
+            };
+            
+        pp.set(n, true);
+        
+        let mut result = Position {
             board: game.board,
             boxes: boxes,
             playerPosition: mov.position,
             player: pp
-        }
+        };
+        
+        result.expand_player();
+        return result;
     }
 
     /// Number of targets left.
@@ -169,4 +180,36 @@ impl Position {
 
         return result;
     }
+    
+    fn expand_player(&mut self) {
+        let (x, _) = self.board.size;
+        let length = self.player.length;
+
+        let noBox = !self.boxes;
+        let mut old = Bitv::new(length);
+        let buf = &mut Bitv::new(length);
+        let result = &mut self.player;
+        
+        while (&old != result) {
+            old.assign(result);
+            buf.assign(&old);
+            result.assign_union(buf);
+                    
+            buf.assign_shift(1);
+            result.assign_union(buf);
+            
+            buf.assign_shift_back(2);
+            result.assign_union(buf);
+
+            buf.assign_shift_back(x-1);
+            result.assign_union(buf);
+
+            buf.assign_shift(2*x);
+            result.assign_union(buf);
+
+            result.assign_intersect(&self.board.floor);
+            result.assign_intersect(&noBox);
+        }
+    }
+
 }
