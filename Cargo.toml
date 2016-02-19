@@ -1,0 +1,9 @@
+[package]
+
+name = "sokoban"
+version = "0.1.0"
+authors = ["vcque <vincent.ocquet@gmail.com>"]
+
+[dependencies]
+bit-vec = "0.4.3"
+time = "*"
