@@ -18,33 +18,28 @@ pub fn main() {
     for argument in env::args() {
         println!("arg: {}", argument);
     }
-    let board = match env::args().take(1).next() {
-        Some(arg) => match File::open(arg) {
-            Ok(file) => { parse(file) },
-            _ => { panic!("Could not open file"); }
-
-        },
+    let board = match env::args().skip(1).next() {
+        Some(arg) => parse(&arg),
         _ => { panic!("Must have at least one arg") }
     };
 
     resolve(&board);
 }
 
-fn parse(mut file: File) -> Board {
-    let mut x: usize = 0;
-    let mut y: usize = 0;
-    let mut data = vec![];
-
-
-    let mut lines = String::new();
-    let _ = file.read_to_string(&mut lines);
-    for line in lines.split('\n') {
-        x = std::cmp::max(x, line.len());
-        y += 1;
-        data.push(line.clone().to_owned());
+fn parse(filename: &str) -> Board {
+    let mut file = match File::open(filename) {
+        Ok(file) => file,
+        Err(_) => panic!("no such file"),
     };
+    let mut file_contents = String::new();
+    file.read_to_string(&mut file_contents)
+        .ok()
+        .expect("failed to read!");
+    let lines: Vec<String> = file_contents.split("\n")
+        .map(|s: &str| s.to_string())
+        .collect();
 
-    return Board::new((x, y), data);
+    return Board::new((lines[0].len(), lines.len()), lines);
 }
 
 fn resolve(board: &Board) {
@@ -52,18 +47,23 @@ fn resolve(board: &Board) {
     let mut queue = LinkedList::<Position>::new();
     queue.push_front(board.initial_position());
 
-    let limit = 10000;
+    let check = 100000;
     let mut counter = 0;
+    let mut already_visited = 0;
 
     while !queue.is_empty() {
-        counter += 1;
-        if counter > limit {
-            println!("wtf, over the LIMIT");
-            return;
-        }
         let mut next_position: Position = queue.pop_back().unwrap();
         next_position.expand(board);
+        counter += 1;
+        if counter % check == 0 {
+            println!("check at {}", counter);
+            println!("There was {} collisions out of {}", already_visited, check);
+            already_visited = 0;
+            board::print_position(board, &next_position);
+        }
+
         if visited.contains(&next_position) {
+            already_visited += 1;
             continue;
         } else {
             for mov in next_position.moves(board) {
@@ -82,6 +82,12 @@ fn resolve(board: &Board) {
         }
     }
 
+}
+
+#[test]
+fn lvl1() {
+    let board = parse("lvls/lvl1");
+    resolve(&board);
 }
 
 #[test]

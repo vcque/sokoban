@@ -108,14 +108,20 @@ impl Board {
             player: player_positions
         }
     }
+}
 
-    pub fn to_square_coord(&self, pos: usize) -> (usize, usize) {
-        let (x,_) = self.size;
-        return (pos % x, pos / x);
+pub fn print_position(board: &Board, pos: &Position) {
+    for i in 0 .. board.size.0 * board.size.1 {
+        if i % board.size.0 == 0 { print!("\n"); }
+        if board.floor.get(i) != Some(true) { print!("#"); }
+        else if pos.player.get(i) == Some(true) {
+            if board.targets.get(i) == Some(true) { print!("+"); }
+            else { print!("@"); }
+        } else if pos.boxes.get(i) == Some(true) {
+            if board.targets.get(i) == Some(true) { print!("*"); }
+            else { print!("$"); }
+        } else if board.targets.get(i) == Some(true) { print!("."); }
+        else { print!(" "); }
     }
-
-    pub fn to_linear_coord(&self, (i, j) : (usize, usize)) -> usize {
-        let (x,_) = self.size;
-        return i + x * j;
-    }
+    print!("\n");
 }
