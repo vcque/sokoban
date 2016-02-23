@@ -1,4 +1,3 @@
-use bitv;
 use bit_vec::BitVec;
 use position::Position;
 
@@ -87,8 +86,6 @@ impl Board {
             )
         });
 
-        bitv::print(&places, x);
-
         Board {
             size: size,
             places: places,
@@ -121,6 +118,7 @@ pub fn print_position(board: &Board, pos: &Position) {
             if board.targets.get(i) == Some(true) { print!("*"); }
             else { print!("$"); }
         } else if board.targets.get(i) == Some(true) { print!("."); }
+         else if board.places.get(i) == Some(false) { print!("-"); }
         else { print!(" "); }
     }
     print!("\n");
