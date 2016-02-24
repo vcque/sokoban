@@ -8,11 +8,14 @@ use std::io::Read;
 
 use bit_vec::BitVec;
 
+use bitv::intersect;
 use board::{Board, print_position};
 use position::Position;
 
+
 mod board;
 mod position;
+mod bitv;
 
 pub fn main() {
     for argument in env::args() {
@@ -60,7 +63,7 @@ fn parse(filename: &str) -> Board {
 
 fn resolve(board: &Board) -> Option<Vec<Position>> {
     let mut position_index = 1;
-    let mut visited = HashMap::<BitVec, BitVec>::with_capacity(1500000);
+    let mut visited = HashMap::<Vec<u32>, BitVec>::with_capacity(1500000);
     let mut position_by_id = HashMap::<u32, (u32, Position)>::with_capacity(1500000);
     let mut queue = LinkedList::<(u32, Position)>::new();
 
@@ -94,9 +97,10 @@ fn resolve(board: &Board) -> Option<Vec<Position>> {
             #[derive(PartialEq, Eq, Debug)]
             enum Res { Found, BoxNotFound, PlayerNotFound };
 
-            let need_change = match visited.get_mut(&new_pos.boxes) {
+            let need_change = match visited.get_mut(new_pos.boxes.storage()) {
                 Some(player) => {
-                    if player.union(&new_pos.player) {
+
+                    if !intersect(&player, &new_pos.player) {
                         new_pos.expand(&board);
                         player.union(&new_pos.player);
                         Res::PlayerNotFound
@@ -112,7 +116,7 @@ fn resolve(board: &Board) -> Option<Vec<Position>> {
 
             if need_change != Res::Found {
                 if need_change == Res::BoxNotFound {
-                    visited.insert(new_pos.boxes.clone(), new_pos.player.clone());
+                    visited.insert(new_pos.boxes.storage().to_vec(), new_pos.player.clone());
                 }
                 queue.push_front((position_index, new_pos));
             }
@@ -161,7 +165,7 @@ fn lvl1() {
 }
 
 #[test]
-fn test() {
+fn simple_test() {
     let mut data = vec![];
     data.push("#########".to_owned());
     data.push("###  ####".to_owned());

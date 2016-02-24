@@ -2,6 +2,7 @@ use std::iter::repeat;
 use bit_vec::BitVec;
 
 use board::Board;
+use bitv;
 
 #[derive(Hash, Eq, PartialEq, Clone)]
 pub struct Position {
@@ -36,39 +37,32 @@ impl Position {
 
     /// Expand the player possibilities according to the board and boxes
     pub fn expand(&mut self, board: &Board) {
-        use std::collections::LinkedList;
-
         let x = board.size.0;
-        let dirs: [i16; 4] = [-1, 1, -(x as i16), x as i16];
 
-        let mut to_visit = self.player.iter().zip(0..)
-            .filter_map(|(bit, pos)| if bit { Some(pos) } else { None })
-            .flat_map(|pos| repeat(pos).zip(dirs.iter()))
-            .map(|(pos, dir)| pos + dir)
-            .filter(|to_visit| board.floor.get(*to_visit as usize) == Some(true))
-            .filter(|to_visit| self.player.get(*to_visit as usize) == Some(false))
-            .filter(|to_visit| self.boxes.get(*to_visit as usize) == Some(false))
-            .collect::<LinkedList<_>>();
+        let mut mask: BitVec = board.floor.clone();
+        mask.difference(&self.boxes);
 
-        while !to_visit.is_empty() {
-            let visit = to_visit.pop_back().unwrap();
-            self.player.set(visit as usize, true);
+        let mut back_buf: BitVec = self.player.clone();
+        let mut front_buf: BitVec = self.player.clone();
 
-            let iter = repeat(visit).zip(dirs.iter())
-                .map(|(pos, dir)| pos + dir)
-                .filter(|to_visit| board.floor.get(*to_visit as usize) == Some(true))
-                .filter(|to_visit| self.player.get(*to_visit as usize) == Some(false))
-                .filter(|to_visit| self.boxes.get(*to_visit as usize) == Some(false));
+        bitv::expand_from(&back_buf, &mut front_buf, x);
+        front_buf.intersect(&mask);
 
-            for element in iter {
-                to_visit.push_front(element);
-            }
+        while back_buf != front_buf {
+            let swap = back_buf;
+            back_buf = front_buf;
+            front_buf = swap;
+
+            bitv::expand_from(&back_buf, &mut front_buf, x);
+            front_buf.intersect(&mask);
         }
+
+        self.player.clone_from(&front_buf);
     }
 
     /// Number of targets left.
     pub fn win(&self, board: &Board) -> bool {
-        self.boxes == board.targets
+        self.boxes.storage() == board.targets.storage()
     }
 
     /// Gives the possible next moves according to board. The position must be expanded.
