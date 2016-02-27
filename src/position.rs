@@ -1,33 +1,33 @@
 use std::iter::repeat;
-use bit_vec::BitVec;
 
 use board::Board;
-use bitv;
+use bitv::BitvImpl;
+use bitv::Bitv;
 
 #[derive(Hash, Eq, PartialEq, Clone)]
 pub struct Position {
     /// The boxes' positions
-    pub boxes: BitVec,
+    pub boxes: BitvImpl,
     /// The player's possible movements
-    pub player: BitVec,
+    pub player: BitvImpl,
 }
 
 impl Position {
 
     /// Build a new position from a move. Needs to be expanded.
     pub fn move_to(&self, mov: &Move) -> Position {
-        let mut boxes: BitVec = self.boxes.clone();
-        boxes.set(mov.from as usize, false);
-        boxes.set(mov.to as usize, true);
+        let mut boxes: BitvImpl = self.boxes.clone();
+        boxes.unset_bit(mov.from as usize);
+        boxes.set_bit(mov.to as usize);
 
         let mut player =
-            if self.player.get(mov.to as usize) != Some(true) {
+            if self.player.get_bit(mov.to as usize) {
                 self.player.clone()
             } else {
-                BitVec::from_elem(self.player.len(), false)
+                [0; 4]
             };
 
-        player.set(mov.player as usize, true);
+        player.set_bit(mov.player as usize);
 
         Position {
             boxes: boxes,
@@ -37,32 +37,33 @@ impl Position {
 
     /// Expand the player possibilities according to the board and boxes
     pub fn expand(&mut self, board: &Board) {
-        let x = board.size.0;
+        let x = board.size.0 as usize;
 
-        let mut mask: BitVec = board.floor.clone();
-        mask.difference(&self.boxes);
+        let mut mask: BitvImpl = board.floor.clone();
 
-        let mut back_buf: BitVec = self.player.clone();
-        let mut front_buf: BitVec = self.player.clone();
+        let mut box_mask = self.boxes.clone();
+        box_mask.neg();
 
-        bitv::expand_from(&back_buf, &mut front_buf, x);
-        front_buf.intersect(&mask);
+        mask.and(&box_mask);
+        let mut space = self.player.clone();
 
-        while back_buf != front_buf {
-            let swap = back_buf;
-            back_buf = front_buf;
-            front_buf = swap;
+        space.expand_from(&self.player, x);
+        space.and(&mask);
 
-            bitv::expand_from(&back_buf, &mut front_buf, x);
-            front_buf.intersect(&mask);
+        while space != self.player {
+            self.player.expand_from(&space, x);
+            self.player.and(&mask);
+
+            space.expand_from(&self.player, x);
+            space.and(&mask);
         }
 
-        self.player.clone_from(&front_buf);
+        self.player = space;
     }
 
     /// Number of targets left.
     pub fn win(&self, board: &Board) -> bool {
-        self.boxes.storage() == board.targets.storage()
+        self.boxes == board.targets
     }
 
     /// Gives the possible next moves according to board. The position must be expanded.
@@ -72,19 +73,20 @@ impl Position {
         let (line_size, _) = board.size;
         let dirs: [i16; 4] = [-1, 1, -(line_size as i16), line_size as i16];
 
-        return self.boxes.iter()
-            .zip((0 .. ))
-            .filter_map(|(bit, pos)| if bit { Some(pos as i16) } else { None })
-            .flat_map(|pos| repeat(pos).zip(dirs.iter()))
-            // .inspect(|&(from, to)| println!("{}, dir {} can be pushed ?", from, to))
-            .filter(|&(pos, dir)| self.player.get((pos - dir) as usize) == Some(true))  // player can reach
+        let mut places = self.boxes.clone();
+        places.neg();
+        places.and(&board.places);
+
+        (board.size.0 .. board.size.0 * (board.size.1 - 1))
+            .filter(|i| self.boxes.get_bit(*i as usize))
+            .flat_map(|pos| repeat(pos as i16).zip(dirs.iter()))
+            .filter(|&(pos, dir)| self.player.get_bit((pos - dir) as usize))  // player can reach
             .flat_map(|(pos, dir)| {
                 repeat(pos).zip(repeat(dir).zip(1 as i16..))
                 .map(|(a, (b, c))| (a, a + b * (c - 1),  a + b * c))
-                // .inspect(|&(from, to)| println!("{} to {} has room ?", from, to))
-                .take_while(|&(_, _, to)|
-                    board.places.get(to as usize) == Some(true)
-                    && self.boxes.get(to as usize) != Some(true))
+                .take_while(|&(_, _, to)| {
+                    places.get_bit(to as usize)
+                })
             })
             .map(|(from, player, to)| Move{from: from, player: player, to: to})
             .collect()
