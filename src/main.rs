@@ -1,11 +1,15 @@
 extern crate bit_vec;
 extern crate time;
+extern crate fnv;
 
 use std::collections::{HashMap, LinkedList};
-
+use std::collections::hash_map::Entry::*;
 use std::env;
 use std::fs::File;
 use std::io::Read;
+use std::hash::BuildHasherDefault;
+
+use fnv::FnvHasher;
 
 use bitv::Bitv;
 use bitv::BitvImpl;
@@ -16,6 +20,8 @@ use position::Position;
 mod board;
 mod position;
 mod bitv;
+
+type FnvHash = BuildHasherDefault<FnvHasher>;
 
 pub fn main() {
     for argument in env::args() {
@@ -62,8 +68,11 @@ fn parse(filename: &str) -> Board {
 
 fn resolve(board: &Board) -> Option<Vec<Position>> {
     let mut position_index = 1;
-    let mut visited = HashMap::<BitvImpl, BitvImpl>::new();
-    let mut position_by_id = HashMap::<u32, (u32, Position)>::new();
+    let mut visited = HashMap::<BitvImpl, BitvImpl, FnvHash>::default();
+    let mut position_by_id = HashMap::<u32, (u32, Position), FnvHash>::default();
+    visited.reserve(2500000);
+    position_by_id.reserve(2500000);
+
     let mut queue = LinkedList::<(u32, Position)>::new();
 
     let mut initial_position = board.initial_position();
@@ -86,6 +95,7 @@ fn resolve(board: &Board) -> Option<Vec<Position>> {
             let mut new_pos = next_position.move_to(&mov);
 
             if board.targets.get_bit(mov.to as usize) && new_pos.win(board) {
+                println!("size of HashMap: {}, {}", visited.capacity(), position_by_id.capacity());
                 println!("we won !");
                 println!("number of visited positions : {}", position_index);
                 let mut result = vec![new_pos, next_position];
@@ -93,34 +103,20 @@ fn resolve(board: &Board) -> Option<Vec<Position>> {
                 return Some(result);
             }
 
-            #[derive(PartialEq, Eq, Debug)]
-            enum Res { Found, BoxNotFound, PlayerNotFound };
-
-            let need_change = match visited.get_mut(&new_pos.boxes) {
-                Some(player) => {
+            match visited.entry(new_pos.boxes) {
+                Occupied(mut entry) => {
+                    let player = entry.get_mut();
                     if !player.intersect(&new_pos.player) {
                         new_pos.expand(&board);
                         player.or(&new_pos.player);
-                        Res::PlayerNotFound
-                    } else {
-                        Res::Found
+                        queue.push_front((position_index, new_pos));
                     }
-                }
-                None => {
+                },
+                Vacant(entry) => {
                     new_pos.expand(&board);
-                    Res::BoxNotFound
+                    entry.insert(new_pos.player);
+                    queue.push_front((position_index, new_pos));
                 }
-            };
-
-            match need_change {
-                Res::BoxNotFound => {
-                    visited.insert(new_pos.boxes, new_pos.player);
-                    queue.push_front((position_index, new_pos));
-                },
-                Res::PlayerNotFound => {
-                    queue.push_front((position_index, new_pos));
-                },
-                _ => {}
             }
         }
 
@@ -129,7 +125,7 @@ fn resolve(board: &Board) -> Option<Vec<Position>> {
     None
 }
 
-fn recover_parents(map: &mut HashMap<u32, (u32, Position)>, first_parent_id: u32) -> Vec<Position> {
+fn recover_parents(map: &mut HashMap<u32, (u32, Position), FnvHash>, first_parent_id: u32) -> Vec<Position> {
     let mut current_index = first_parent_id;
     let mut result: Vec<Position> = vec![];
     while let Some((p_i, parent_pos)) = map.remove(&current_index) {

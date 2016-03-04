@@ -6,6 +6,7 @@ authors = ["vcque <vincent.ocquet@gmail.com>"]
 
 [dependencies]
 bit-vec = "0.4.3"
+fnv = "1.0.2"
 time = "*"
 
 [profile.release]
